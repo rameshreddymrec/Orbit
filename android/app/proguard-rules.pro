@@ -1,0 +1,3 @@
+-keep class com.ryanheise.audioservice.** { *; }
+-keep class io.flutter.** { *; }
+-dontwarn com.ryanheise.audioservice.**
