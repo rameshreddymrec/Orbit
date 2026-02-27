@@ -27,6 +27,8 @@ import 'package:orbit/Helpers/handle_native.dart';
 import 'package:orbit/Helpers/import_export_playlist.dart';
 import 'package:orbit/Helpers/logging.dart';
 import 'package:orbit/Helpers/route_handler.dart';
+import 'package:orbit/globals.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:orbit/Screens/Common/routes.dart';
 import 'package:orbit/Screens/Player/audioplayer.dart';
 import 'package:orbit/constants/constants.dart';
@@ -82,6 +84,8 @@ Future<void> main() async {
     if (!kIsWeb && Platform.isAndroid) setOptimalDisplayMode(),
     () async {
       try {
+        final packageInfo = await PackageInfo.fromPlatform();
+        AppGlobals.appVersion = packageInfo.version;
         await startService();
       } finally {
         if (!GetIt.I.isRegistered<MyTheme>()) {
@@ -185,6 +189,14 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     super.initState();
+
+    // Pre-cache the logo as early as possible for instant display
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      precacheImage(
+        const AssetImage('assets/orbit_logo_new.png'),
+        context,
+      );
+    });
 
     final String? lang = Hive.box('settings').get('lang') as String?;
     if (!kIsWeb) {

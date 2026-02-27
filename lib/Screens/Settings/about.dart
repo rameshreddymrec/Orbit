@@ -7,6 +7,7 @@ import 'package:orbit/CustomWidgets/snackbar.dart';
 import 'package:orbit/Helpers/github.dart';
 import 'package:orbit/Helpers/update.dart';
 import 'package:orbit/Helpers/update_helper.dart';
+import 'package:orbit/globals.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
@@ -24,20 +25,9 @@ class AboutPage extends StatefulWidget {
 }
 
 class _AboutPageState extends State<AboutPage> {
-  String? appVersion;
-
   @override
   void initState() {
-    main();
     super.initState();
-  }
-
-  Future<void> main() async {
-    final PackageInfo packageInfo = await PackageInfo.fromPlatform();
-    appVersion = packageInfo.version;
-    setState(
-      () {},
-    );
   }
 
   @override
@@ -85,7 +75,7 @@ class _AboutPageState extends State<AboutPage> {
                   ),
                   const SizedBox(height: 5),
                   Text(
-                    'v $appVersion',
+                    'v ${AppGlobals.appVersion}',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w400,
@@ -103,7 +93,7 @@ class _AboutPageState extends State<AboutPage> {
                 AppLocalizations.of(context)!.versionSub,
               ),
               trailing: Text(
-                'v$appVersion',
+                'v${AppGlobals.appVersion}',
                 style: TextStyle(
                   color: Theme.of(context).textTheme.bodySmall!.color,
                 ),
@@ -119,7 +109,7 @@ class _AboutPageState extends State<AboutPage> {
                   final String? changelog = release['changelog'] as String?;
                   final bool isForce = release['isForce'] as bool? ?? false;
                   if (latestVersion != null &&
-                      compareVersion(latestVersion, appVersion!)) {
+                      compareVersion(latestVersion, AppGlobals.appVersion!)) {
                     if (mounted) {
                       UpdateHelper.showUpdateDialog(
                         context: context,

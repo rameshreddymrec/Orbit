@@ -38,7 +38,7 @@ class AudioHandlerHelper {
       builder: () => AudioPlayerHandlerImpl(),
       config: AudioServiceConfig(
         androidNotificationChannelId: 'com.orbit.music.audio.channel.audio',
-        androidNotificationChannelName: 'BlackHole',
+        androidNotificationChannelName: 'Orbit',
         androidNotificationIcon: 'drawable/ic_stat_music_note',
         androidShowNotificationBadge: true,
         androidStopForegroundOnPause: false,

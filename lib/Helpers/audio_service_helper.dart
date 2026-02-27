@@ -24,29 +24,48 @@ import 'package:orbit/Helpers/mediaitem_converter.dart';
 import 'package:flutter/material.dart';
 
 void showSongInfo(MediaItem mediaItem, BuildContext context) {
-  final Map details = MediaItemConverter.mediaItemToMap(
-    mediaItem,
-  );
-  details['duration'] =
-      '${(int.parse(details["duration"].toString()) ~/ 60).toString().padLeft(2, "0")}:${(int.parse(details["duration"].toString()) % 60).toString().padLeft(2, "0")}';
-  // style: Theme.of(context).textTheme.caption,
-  if (mediaItem.extras?['size'] != null) {
-    details.addEntries([
-      MapEntry(
-        'date_modified',
-        DateTime.fromMillisecondsSinceEpoch(
-          int.parse(
-                mediaItem.extras!['date_modified'].toString(),
-              ) *
-              1000,
-        ).toString().split('.').first,
-      ),
-      MapEntry(
-        'size',
-        '${((mediaItem.extras!['size'] as int) / (1024 * 1024)).toStringAsFixed(2)} MB',
-      ),
-    ]);
+  final Map rawDetails = MediaItemConverter.mediaItemToMap(mediaItem);
+
+  // Format duration as MM:SS
+  try {
+    final int secs = int.parse(rawDetails['duration'].toString());
+    rawDetails['duration'] =
+        '${(secs ~/ 60).toString().padLeft(2, "0")}:${(secs % 60).toString().padLeft(2, "0")}';
+  } catch (_) {}
+
+  // Only show user-friendly fields in a clean order
+  const List<String> orderedKeys = [
+    'title',
+    'artist',
+    'album',
+    'year',
+    'release_date',
+    'language',
+    'duration',
+    'subtitle',
+  ];
+
+  final Map details = {};
+  for (final key in orderedKeys) {
+    final val = rawDetails[key];
+    if (val != null &&
+        val.toString().trim().isNotEmpty &&
+        val.toString() != 'null') {
+      details[key] = val;
+    }
   }
+
+  // For offline songs also show file info
+  if (mediaItem.extras?['size'] != null) {
+    try {
+      details['date_modified'] = DateTime.fromMillisecondsSinceEpoch(
+        int.parse(mediaItem.extras!['date_modified'].toString()) * 1000,
+      ).toString().split('.').first;
+      details['size'] =
+          '${((mediaItem.extras!['size'] as int) / (1024 * 1024)).toStringAsFixed(2)} MB';
+    } catch (_) {}
+  }
+
   PopupDialog().showPopup(
     context: context,
     child: GradientCard(
@@ -87,9 +106,7 @@ void showSongInfo(MediaItem mediaItem, BuildContext context) {
                 ),
                 showCursor: true,
                 cursorColor: Colors.black,
-                cursorRadius: const Radius.circular(
-                  5,
-                ),
+                cursorRadius: const Radius.circular(5),
               ),
             );
           }).toList(),
@@ -98,3 +115,4 @@ void showSongInfo(MediaItem mediaItem, BuildContext context) {
     ),
   );
 }
+

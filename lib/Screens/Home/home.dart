@@ -33,6 +33,7 @@ import 'package:orbit/Helpers/github.dart';
 import 'package:orbit/Helpers/route_handler.dart';
 import 'package:orbit/Helpers/update.dart';
 import 'package:orbit/Helpers/update_helper.dart';
+import 'package:orbit/globals.dart';
 import 'package:orbit/Screens/Common/routes.dart';
 import 'package:orbit/Screens/Home/home_screen.dart';
 import 'package:orbit/Screens/Library/library.dart';
@@ -133,34 +134,34 @@ class _HomePageState extends State<HomePage> {
   }
 
   void checkVersion() {
-    PackageInfo.fromPlatform().then((PackageInfo packageInfo) {
-      appVersion = packageInfo.version;
-
-      if (checkUpdate) {
-        Logger.root.info('Checking for update');
-        GitHub.getLatestRelease().then((Map release) async {
-          final String? version = release['version'] as String?;
-          final String? changelog = release['changelog'] as String?;
-          final bool isForce = release['isForce'] as bool? ?? false;
-          if (version != null &&
-              compareVersion(
-                version,
-                appVersion!,
-              )) {
-            Logger.root.info('Update available');
-            if (mounted) {
-              UpdateHelper.showUpdateDialog(
-                context: context,
-                version: version,
-                changelog: changelog,
-                isForce: isForce,
-              );
-            }
-          } else {
-            Logger.root.info('No update available');
+    appVersion = AppGlobals.appVersion;
+    if (checkUpdate) {
+      Logger.root.info('Checking for update. Current version: $appVersion');
+      GitHub.getLatestRelease().then((Map release) async {
+        final String? version = release['version'] as String?;
+        final String? changelog = release['changelog'] as String?;
+        final bool isForce = release['isForce'] as bool? ?? false;
+        Logger.root.info('Latest release version: $version');
+        if (version != null &&
+            compareVersion(
+              version,
+              appVersion!,
+            )) {
+          Logger.root.info('Update available: $version');
+          if (mounted) {
+            UpdateHelper.showUpdateDialog(
+              context: context,
+              version: version,
+              changelog: changelog,
+              isForce: isForce,
+            );
           }
-        });
-      }
+        } else {
+          Logger.root.info('No update available or version is latest');
+        }
+      });
+    }
+    // ... rest of autoBackup logic ...
       if (autoBackup) {
         final List<String> checked = [
           AppLocalizations.of(
@@ -255,8 +256,7 @@ class _HomePageState extends State<HomePage> {
           }
         }
       }
-    });
-  }
+    }
 
   final PageController _pageController = PageController();
   final PersistentTabController _controller = PersistentTabController(initialIndex: 0);

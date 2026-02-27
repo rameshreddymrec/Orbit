@@ -522,6 +522,9 @@ class FormatResponse {
             : response['description'].toString().unescape(),
         'title': response['title'].toString().unescape(),
         'image': getImageUrl(response['image'].toString()),
+        'perma_url': (response['perma_url'] ?? response['url'] ?? '').toString(),
+        'url': (response['perma_url'] ?? response['url'] ?? '').toString(),
+        'more_info': response['more_info'],
       };
     } catch (e) {
       Logger.root.severe('Error inside formatSingleShowResponse: $e');
@@ -703,6 +706,11 @@ class FormatResponse {
         } else if (type == 'show') {
           futures.add(() async {
             list[i] = await formatSingleShowResponse(item);
+          }());
+        } else if (type == 'episode') {
+          // Podcast episodes: treat like songs to decrypt the media URL
+          futures.add(() async {
+            list[i] = await formatSingleSongResponse(item);
           }());
         }
       }

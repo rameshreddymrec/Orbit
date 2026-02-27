@@ -602,7 +602,15 @@ class AudioPlayerHandlerImpl extends BaseAudioHandler
       });
     } else {
       Logger.root.info('starting without eq pipeline');
-      _player = AudioPlayer();
+      _player = AudioPlayer(
+        audioLoadConfiguration: const AudioLoadConfiguration(
+          androidLoadControl: AndroidLoadControl(
+            minBufferDuration: Duration(seconds: 50),
+            maxBufferDuration: Duration(seconds: 200),
+            prioritizeTimeOverSizeThresholds: true,
+          ),
+        ),
+      );
     _playlist = ConcatenatingAudioSource(children: []);
     }
   }
@@ -996,7 +1004,15 @@ class AudioPlayerHandlerImpl extends BaseAudioHandler
 
   void _onError(err, stacktrace, {bool stopService = false}) {
     Logger.root.severe('Error from audioservice: ${err.code}', err);
-    if (stopService) stop();
+    if (stopService) {
+      stop();
+    } else {
+      // Skip to next song instead of freezing on a failed/expired URL
+      if (_player != null && (_player!.hasNext)) {
+        Logger.root.info('Skipping to next song after playback error');
+        _player!.seekToNext();
+      }
+    }
   }
 
   /// Broadcasts the current state to all clients.
