@@ -18,6 +18,7 @@
  */
 
 import 'dart:io';
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -47,44 +48,58 @@ class ExtStorageProvider {
     try {
       // checking platform
       if (Platform.isAndroid) {
-        if (await requestPermission(Permission.storage)) {
+        final AndroidDeviceInfo androidInfo = await DeviceInfoPlugin().androidInfo;
+        final int sdkInt = androidInfo.version.sdkInt;
+
+        bool hasPermission = false;
+        if (sdkInt >= 33) {
+          hasPermission = await requestPermission(Permission.audio);
+          // Also try manageExternalStorage if specifically needed for non-media folders, 
+          // but for 'Music' Permission.audio might be enough depending on how it's used.
+        } else {
+          hasPermission = await requestPermission(Permission.storage);
+        }
+
+        if (hasPermission) {
           directory = await getExternalStorageDirectory();
 
-          // getting main path
-          final String newPath =
-              directory!.path.split('/Android/data/')[0] + '/$dirName';
+          // getting main path (/storage/emulated/0)
+          final String rootPath = directory!.path.split('/Android/data/')[0];
+          final String newPath = '$rootPath/$dirName';
 
           directory = Directory(newPath);
 
           // checking if directory exist or not
           if (!await directory.exists()) {
-            // if directory not exists then asking for permission to create folder
-            await requestPermission(Permission.manageExternalStorage);
-            //creating folder
-
-            await directory.create(recursive: true);
-          }
-          if (await directory.exists()) {
             try {
-              if (writeAccess) {
-                await requestPermission(Permission.manageExternalStorage);
-              }
-              // if directory exists then returning the complete path
-              return newPath;
+              await directory.create(recursive: true);
             } catch (e) {
-              rethrow;
+              // If fails, try asking for MANAGE_EXTERNAL_STORAGE for Android 11+
+              if (sdkInt >= 30) {
+                if (await requestPermission(Permission.manageExternalStorage)) {
+                  await directory.create(recursive: true);
+                } else {
+                  // Fallback to app specific if all else fails? 
+                  // Or let it throw to show the error.
+                  rethrow;
+                }
+              } else {
+                rethrow;
+              }
             }
           }
+          return newPath;
         } else {
-          // If storage permission fails, try manageExternalStorage as fallback
-          if (await requestPermission(Permission.manageExternalStorage)) {
-            final directory = Directory('/storage/emulated/0/$dirName');
+          // Fallback check for MANAGE_EXTERNAL_STORAGE if legacy storage is denied
+          if (sdkInt >= 30 && await requestPermission(Permission.manageExternalStorage)) {
+            final String rootPath = '/storage/emulated/0';
+            final directory = Directory('$rootPath/$dirName');
             if (!await directory.exists()) {
               await directory.create(recursive: true);
             }
             return directory.path;
           }
-          return throw 'Storage permission denied';
+          throw 'Storage permission denied';
         }
       } else if (Platform.isIOS || Platform.isMacOS) {
         directory = await getApplicationDocumentsDirectory();
@@ -97,6 +112,5 @@ class ExtStorageProvider {
     } catch (e) {
       rethrow;
     }
-    return directory.path;
   }
 }

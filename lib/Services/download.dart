@@ -18,7 +18,7 @@
  */
 
 import 'dart:io';
-
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:orbit/CustomWidgets/snackbar.dart';
 import 'package:orbit/Helpers/lyrics.dart';
 import 'package:orbit/Services/ext_storage_provider.dart';
@@ -86,19 +86,35 @@ class Download with ChangeNotifier {
     download = true;
     if (Platform.isAndroid || Platform.isIOS) {
       Logger.root.info('Requesting storage permission');
-      PermissionStatus status = await Permission.storage.status;
+      
+      Permission permissionToRequest = Permission.storage;
+      if (Platform.isAndroid) {
+        final AndroidDeviceInfo androidInfo = await DeviceInfoPlugin().androidInfo;
+        if (androidInfo.version.sdkInt >= 33) {
+          permissionToRequest = Permission.audio;
+        }
+      }
+
+      PermissionStatus status = await permissionToRequest.status;
       if (status.isDenied) {
-        Logger.root.info('Request denied');
-        await [
-          Permission.storage,
+        Logger.root.info('Permission denied, requesting...');
+        final Map<Permission, PermissionStatus> statuses = await [
+          permissionToRequest,
           Permission.accessMediaLocation,
           Permission.mediaLibrary,
         ].request();
+        status = statuses[permissionToRequest] ?? PermissionStatus.denied;
       }
-      status = await Permission.storage.status;
+      
       if (status.isPermanentlyDenied) {
-        Logger.root.info('Request permanently denied');
+        Logger.root.info('Permission permanently denied');
         await openAppSettings();
+      }
+      
+      if (!status.isGranted && !status.isLimited) {
+        Logger.root.severe('Permission not granted: $status');
+        // If it's still not granted, try to proceed anyway as ExtStorageProvider 
+        // will try one last time with MANAGE_EXTERNAL_STORAGE fallback.
       }
     }
     final RegExp avoid = RegExp(r'[\.\\\*\:\"\?#/;\|]');

@@ -19,6 +19,7 @@
 
 import 'dart:io';
 
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:orbit/CustomWidgets/snackbar.dart';
 import 'package:orbit/Helpers/picker.dart';
 import 'package:flutter/material.dart';
@@ -38,15 +39,23 @@ Future<String> createBackup(
   bool showDialog = true,
 }) async {
   if (Platform.isAndroid) {
-    PermissionStatus status = await Permission.storage.status;
+    final AndroidDeviceInfo androidInfo = await DeviceInfoPlugin().androidInfo;
+    final int sdkInt = androidInfo.version.sdkInt;
+    
+    Permission permissionToRequest = Permission.storage;
+    if (sdkInt >= 33) {
+      permissionToRequest = Permission.audio;
+    }
+
+    PermissionStatus status = await permissionToRequest.status;
     if (status.isDenied) {
       await [
-        Permission.storage,
+        permissionToRequest,
         Permission.accessMediaLocation,
         Permission.mediaLibrary,
       ].request();
     }
-    status = await Permission.storage.status;
+    status = await permissionToRequest.status;
     if (status.isPermanentlyDenied) {
       await openAppSettings();
     }

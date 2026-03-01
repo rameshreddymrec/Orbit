@@ -20,16 +20,48 @@
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import 'package:on_audio_query/on_audio_query.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class OfflineAudioQuery {
   static OnAudioQuery audioQuery = OnAudioQuery();
   static final RegExp avoid = RegExp(r'[\.\\\*\:\"\?#/;\|]');
 
   Future<void> requestPermission() async {
-    while (!await audioQuery.permissionsStatus()) {
+    if (Platform.isAndroid) {
+      final AndroidDeviceInfo androidInfo = await DeviceInfoPlugin().androidInfo;
+      final int sdkInt = androidInfo.version.sdkInt;
+
+      Permission permissionToRequest = Permission.storage;
+      if (sdkInt >= 33) {
+        permissionToRequest = Permission.audio;
+      }
+
+      PermissionStatus status = await permissionToRequest.status;
+      if (status.isDenied) {
+         Map<Permission, PermissionStatus> statuses = await [
+          permissionToRequest,
+          Permission.accessMediaLocation,
+        ].request();
+        status = statuses[permissionToRequest] ?? PermissionStatus.denied;
+      }
+
+      if (status.isPermanentlyDenied) {
+        await openAppSettings();
+      }
+
+      // If still denied, and it's Android 11+, try MANAGE_EXTERNAL_STORAGE as fallback
+      if (!status.isGranted && sdkInt >= 30) {
+        await Permission.manageExternalStorage.request();
+      }
+    }
+    
+    // Fallback to internal check but don't block in while loop anymore 
+    // to avoid potential hangs on modern Android
+    if (!await audioQuery.permissionsStatus()) {
       await audioQuery.permissionsRequest();
     }
   }
